@@ -4,11 +4,12 @@ use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
-const WARNING_THRESHOLD: f64 = 10.0;
-const ALERT_THRESHOLD: f64 = 5.0;
+// Should be in a config
+const WARNING_THRESHOLD: f64 = 5.0;
+const ALERT_THRESHOLD: f64 = 2.0;
 const LOOP_DELAY: u64 = 5;
 const REFRESH_MEMORY_DELAY: u64 = 10;
-const APPLICATIONS: [&str; 2] = ["tresorit", "discord"];
+const APPLICATIONS: [&str; 3] = ["tresorit", "discord", "brave"];
 
 fn main() {
     let sys_info = SysInfoWrapper::new();
@@ -20,9 +21,6 @@ fn main() {
 
 fn check_memory(sys_info: &SysInfoWrapper) {
     let percent_available_memory = get_percent_available_memory(sys_info);
-    println!("Total memory: {} kB", sys_info.get_total_memory());
-    println!("Available memory: {} kB", sys_info.get_available_memory());
-    println!("Percent available memory: {:.2}%", percent_available_memory);
 
     if percent_available_memory < ALERT_THRESHOLD {
         kill_applications();
