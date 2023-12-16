@@ -2,15 +2,16 @@ use dialog::DialogBox;
 use memory::sys_info::{get_percent_available_memory, SysInfoWrapper};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
+use std::env;
 use std::fs;
 use std::process::Command;
 use std::thread;
 use std::time::Duration;
-use std::{env, fs::File};
 
 // Would be better to have an init command to create the config file
 static CONFIG: Lazy<Config> = Lazy::new(|| {
-    let config_file  =  match env::home_dir() { // This program is only for Linux so we don't get about the deprecation for windows
+    // This program is only for Linux so we don't get about the deprecation for windows
+    let config_file = match env::home_dir() {
         Some(path) => path.display().to_string() + "/.memory-config.toml",
         None => panic!("Impossible to get your home dir!"),
     };
