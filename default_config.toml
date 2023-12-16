@@ -1,0 +1,5 @@
+warning_threshold = 5
+alert_threshold = 2
+loop_delay = 5
+refresh_memory_delay = 10
+applications = ["chrome"]
