@@ -14,6 +14,8 @@ Run `$ memory&`
 You might also find some way to daemonize it so that you don't have to launch it manually.
 
 ## Configuration
-The first time you run the program, a configuration file is created in your home directory.
+To generate the configuration file, run `memory config`
 
-Feel free to adjust the settings you want.
+This will create a `.memory-config.toml` file in your home directory.
+
+You can modify the settings in this file as you wish. 

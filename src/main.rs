@@ -1,25 +1,11 @@
 use dialog::DialogBox;
 use memory::sys_info::{get_percent_available_memory, SysInfoWrapper};
-use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::env;
 use std::fs;
 use std::process::Command;
 use std::thread;
 use std::time::Duration;
-
-// Would be better to have an init command to create the config file
-static CONFIG: Lazy<Config> = Lazy::new(|| {
-    // This program is only for Linux so we don't get about the deprecation for windows
-    let config_file = match env::home_dir() {
-        Some(path) => path.display().to_string() + "/.memory-config.toml",
-        None => panic!("Impossible to get your home dir!"),
-    };
-    create_config_file_if_not_exists(&config_file);
-    let config_str = fs::read_to_string(config_file).expect("Could not open config file");
-
-    toml::from_str(config_str.as_str()).unwrap()
-});
 
 #[derive(Deserialize)]
 struct Config {
@@ -30,24 +16,43 @@ struct Config {
     applications: Vec<String>,
 }
 
-fn main() -> std::io::Result<()> {
-    let sys_info = SysInfoWrapper::new();
-    loop {
-        check_memory(&sys_info);
-        thread::sleep(Duration::from_secs(CONFIG.loop_delay as u64));
+fn get_config_file_path() -> String {
+    match env::home_dir() {
+        Some(path) => path.display().to_string() + "/.memory-config.toml",
+        None => panic!("Impossible to get your home dir!"),
     }
 }
 
-fn check_memory(sys_info: &SysInfoWrapper) {
+fn main() -> std::io::Result<()> {
+    if let Some(command) = std::env::args().nth(1) {
+        if command == "config" {
+            create_config_file_if_not_exists(&get_config_file_path());
+            return Ok(());
+        }
+    }
+
+    let config_str = fs::read_to_string(get_config_file_path())
+        .expect("Could not open config file. Please run `memory config` to create it.\n");
+
+    let config = toml::from_str(config_str.as_str()).unwrap();
+
+    let sys_info = SysInfoWrapper::new();
+    loop {
+        check_memory(&sys_info, &config);
+        thread::sleep(Duration::from_secs(config.loop_delay as u64));
+    }
+}
+
+fn check_memory(sys_info: &SysInfoWrapper, config: &Config) {
     let percent_available_memory = get_percent_available_memory(sys_info);
 
-    if percent_available_memory < CONFIG.alert_threshold as f64 {
-        kill_applications();
+    if percent_available_memory < config.alert_threshold as f64 {
+        kill_applications(config);
         return;
     }
 
-    if percent_available_memory < CONFIG.warning_threshold as f64 {
-        send_warning();
+    if percent_available_memory < config.warning_threshold as f64 {
+        send_warning(config);
     }
 }
 
@@ -64,14 +69,14 @@ fn create_config_file_if_not_exists(config_file: &String) {
     }
 }
 
-fn kill_applications() {
-    for application in CONFIG.applications.iter() {
+fn kill_applications(config: &Config) {
+    for application in config.applications.iter() {
         kill_application(application);
-        thread::sleep(Duration::from_secs(CONFIG.refresh_memory_delay as u64));
+        thread::sleep(Duration::from_secs(config.refresh_memory_delay as u64));
 
         let sys_info = SysInfoWrapper::new();
         let percent_available_memory = get_percent_available_memory(&sys_info);
-        if percent_available_memory > CONFIG.alert_threshold as f64 {
+        if percent_available_memory > config.alert_threshold as f64 {
             return;
         }
     }
@@ -98,10 +103,10 @@ fn kill_application(application: &String) {
     send_message("APPLICATION CLOSED", &text);
 }
 
-fn send_warning() {
+fn send_warning(config: &Config) {
     let text = format!(
         "Available memory is below {}%.\nPlease close some applications.",
-        CONFIG.warning_threshold
+        config.warning_threshold
     );
     send_message("WARNING - LOW MEMORY", &text);
     println!("The dialog box has been closed.");
